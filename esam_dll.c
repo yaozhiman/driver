@@ -95,20 +95,20 @@ int esam_open()
 
 //uint8_t get_xl[] = {0x55,0x80,0x0e,0x00,0x02,0x00,0x00,0x00};
 //int esam_read(uint8_t* in, uint8_t len_wr, uint8_t* out, uint8_t* len_rd)
-int16_t esam_read(uint32_t esamCMD,uint8_t *pInBuf,uint16_t inLen,uint8_t* out, uint16_t* len_rd)
+int esam_read(uint32_t esamCMD,uint8_t *pInBuf,uint16_t inLen,uint8_t* out, uint16_t* len_rd)
 {
-    int16_t fd, ret = 0, i;
+    int fd, ret = 0, i;
     
     uint8_t LRC1 = 0x00;
     uint8_t LRC2 = 0x00;
     
-    uint8_t tx_buff[1024];
+    uint8_t tx_buff[2048];
     
     uint8_t buf_header[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     
     uint16_t field_len;
     
-    if(inLen > 1024)
+    if(inLen > 2048)
     {
     	ret = ERR_TX_BIG;
     	return ret;

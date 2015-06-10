@@ -23,6 +23,8 @@
 #include <sys/stat.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
+#include <pthread.h>
+#include "libDrive.h"
 
 #define fm25cl64_CMD_WRSR		0x01	/* Write status register */
 #define fm25cl64_CMD_WRDI		0x04	/* Write disable */
@@ -36,16 +38,16 @@
 static const char *device = "/dev/spidev0.0";
 static uint8_t mode = 3;
 static uint8_t bits = 8;
-static uint32_t speed = 5000000;
+static uint32_t speed = 15000000;
 
-int16_t fm25cl64_open()
+int fm25cl64_open()
 {
-	int16_t fd,ret;
+	int fd,ret;
 	
 	fd = open(device, O_RDWR);
 	if (fd < 0)
 	{
-		perror("can't open esam device");
+		perror(device);
 		return fd;
 	}
 	
@@ -56,12 +58,12 @@ int16_t fm25cl64_open()
 		return ret;
 	}
 
-	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
-	if (ret == -1)
-	{
-		perror("can't get spi mode");
-		return ret;
-	}
+//	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
+//	if (ret == -1)
+//	{
+//		perror("can't get spi mode");
+//		return ret;
+//	}
 
 	ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
 	if (ret == -1)
@@ -70,12 +72,12 @@ int16_t fm25cl64_open()
 		return ret;
 	}
 
-	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
-	if (ret == -1)
-	{
-		perror("can't get bits per word");
-		return ret;
-	}
+//	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
+//	if (ret == -1)
+//	{
+//		perror("can't get bits per word");
+//		return ret;
+//	}
 
 
 	ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
@@ -85,28 +87,24 @@ int16_t fm25cl64_open()
 		return ret;
 	}
 
-	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
-	if (ret == -1)
-	{
-		perror("can't get max speed hz");
-		return ret;
-	}
-
-//	printf("spi mode: %d\n", mode);
-//	printf("bits per word: %d\n", bits);
-//	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
+//	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
+//	if (ret == -1)
+//	{
+//		perror("can't get max speed hz");
+//		return ret;
+//	}
 	return fd;
 }
 
-int16_t fm25cl64_write(int16_t addr,uint8_t *data,uint16_t len)
+int Fm25clWrite(uint16_t addr,uint8_t *data,uint16_t len) 
 {
-	int16_t ret,fd;
+	int ret,fd;
 		
 	uint8_t write_en[1] = {fm25cl64_CMD_WREN,};
 	
 	uint8_t command[3];
-	if( (addr + len) > 0xFFFF)
-		return -EFAULT;
+	if( (addr + len) > 65535)
+		return -EINVAL;
 	command[0] = fm25cl64_CMD_WRITE;
 	command[1] = addr >> 8;
 	command[2] = addr;
@@ -126,30 +124,30 @@ int16_t fm25cl64_write(int16_t addr,uint8_t *data,uint16_t len)
 			.len = len,
 		},
 	};
+
 	fd = fm25cl64_open();
 	if (fd < 0)
 	{
 		perror("can't perform fm25cl64_open");
 		return fd;
 	}
-	
+
 	ret = ioctl(fd, SPI_IOC_MESSAGE(ARRAY_SIZE(tr)), &tr);
 	if (ret < 0)
 	{
 		perror("can't perform fm25cl64_write");
-//		return ret;
 	}
 	close(fd);
 	return ret;
 }
 
-int16_t fm25cl64_read(int16_t addr,uint8_t *data,uint16_t len)
+int Fm25clRead(uint16_t addr,uint8_t *data,uint16_t len)
 {
-	int16_t ret,fd;
+	int ret,fd;
 			
 	uint8_t command[3];
-	if( (addr + len) > 0xFFFF)
-		return -EFAULT;
+	if( (addr + len) > 65535)
+		return -EINVAL;
 	command[0] = fm25cl64_CMD_READ;
 	command[1] = addr >> 8;
 	command[2] = addr;
@@ -164,25 +162,22 @@ int16_t fm25cl64_read(int16_t addr,uint8_t *data,uint16_t len)
 			.len = len,
 		},
 	};
-	
+
 	fd = fm25cl64_open();
 	if (fd < 0)
 	{
 		perror("can't perform fm25cl64_open");
 		return fd;
 	}
-	
 	ret = ioctl(fd, SPI_IOC_MESSAGE(ARRAY_SIZE(tr)), &tr);
 	if (ret < 0)
 	{
 		perror("can't perform fm25cl64_read");
-//		return ret;
 	}
 	close(fd);
 	return ret;
 }
-
-//void fm25cl64_close(int16_t fd)
-//{
-//	close(fd);
-//}
+void fm25cl64_close(int16_t fd)
+{
+	close(fd);
+}
